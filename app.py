@@ -1,91 +1,91 @@
 import streamlit as st
-import time
 
 # 页面配置
 st.set_page_config(page_title="药药灵", page_icon="💊", layout="centered")
 
-# 极简 CSS：强化“槽位”感
+# 自定义样式：让搜索栏更整齐
 st.markdown("""
 <style>
-    .slot-box { border: 3px dashed #bdc3c7; border-radius: 20px; padding: 20px; text-align: center; background-color: #f8f9fa; }
-    .vs-text { font-size: 40px; font-weight: bold; color: #7f8c8d; margin-top: 20px; }
-    .result-card { padding: 20px; border-radius: 15px; border: 2px solid #e74c3c; background-color: #fff5f5; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3rem; }
+    .reportview-container .main .block-container { padding-top: 2rem; }
+    .cate-box { padding: 15px; border-radius: 10px; background-color: #f0f2f6; margin-bottom: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
+# --- 1. 标题与Logo ---
 st.title("💊 药药灵")
-st.caption("第一种放左边，第二种放右边，相冲一眼便知。")
+st.caption("简洁搜索，安全用药。")
 
-# 初始化状态
-if 'slot1' not in st.session_state: st.session_state.slot1 = ""
-if 'slot2' not in st.session_state: st.session_state.slot2 = ""
+# --- 2. 状态初始化 ---
+if 'show_second_slot' not in st.session_state:
+    st.session_state.show_second_slot = False
+if 'search_clicked' not in st.session_state:
+    st.session_state.search_clicked = False
 
-# --- 第一层：两个巨大的交互槽位 ---
-col1, col_vs, col2 = st.columns([5, 1, 5])
+# --- 3. 核心搜索区域 ---
+col_input, col_tool = st.columns([4, 1])
 
-with col1:
-    st.markdown('<div class="slot-box">物品 A</div>', unsafe_allow_html=True)
-    st.session_state.slot1 = st.text_input("输入药名", value=st.session_state.slot1, key="in1", label_visibility="collapsed")
-    if st.button("📷 拍照识 A"):
-        st.session_state.slot1 = "头孢" # 模拟识别
-        st.rerun()
+with col_input:
+    # 第一个输入框
+    input_a = st.text_input("药品 A", placeholder="输入药品名称...", label_visibility="collapsed")
+    
+    # 如果点击了加号，显示第二个输入框
+    input_b = ""
+    if st.session_state.show_second_slot:
+        st.write("➕")
+        input_b = st.text_input("药品/食物 B", placeholder="输入另一个对比项...", label_visibility="collapsed")
 
-with col_vs:
-    st.markdown('<div class="vs-text">+</div>', unsafe_allow_html=True)
+with col_tool:
+    # 拍照和加号按钮并排
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("📷"): st.toast("模拟相机启动...")
+    with c2:
+        if st.button("➕"):
+            st.session_state.show_second_slot = not st.session_state.show_second_slot
+            st.rerun()
+    
+    # 大大的搜索按键
+    if st.button("🚀 点击搜索"):
+        st.session_state.search_clicked = True
 
-with col2:
-    st.markdown('<div class="slot-box">物品 B</div>', unsafe_allow_html=True)
-    st.session_state.slot2 = st.text_input("输入药/食", value=st.session_state.slot2, key="in2", label_visibility="collapsed")
-    if st.button("📷 拍照识 B"):
-        st.session_state.slot2 = "白酒" # 模拟识别
-        st.rerun()
-
-# --- 第二层：逻辑判断与展示 ---
-# 模拟简单的禁忌库
-database = {
-    ("头孢", "白酒"): "严重双硫仑反应，可能导致休克甚至死亡！",
-    ("感冒药", "降压药"): "血压波动过大，增加心血管风险。",
-    ("感冒药", "酒精"): "严重肝损伤，乙酰氨基酚中毒风险。"
+# --- 4. 模拟数据库 ---
+db = {
+    "感冒药": {"banned": ["酒精", "降压药"], "type": "解热镇痛类"},
+    "头孢": {"banned": ["酒精"], "type": "抗生素类"},
+    "酒精": {"type": "饮品/溶剂"}
 }
 
-# 清空按钮
-if st.button("🔄 全部清空"):
-    st.session_state.slot1 = ""
-    st.session_state.slot2 = ""
-    st.rerun()
+# --- 5. 结果逻辑展示 ---
+if st.session_state.search_clicked:
+    st.divider()
+    
+    # 场景一：双框对比模式
+    if st.session_state.show_second_slot and input_a and input_b:
+        st.subheader(f"💡 比对：{input_a} vs {input_b}")
+        
+        # 简单碰撞逻辑
+        is_conflict = False
+        if input_a in db and input_b in db[input_a]["banned"]:
+            is_conflict = True
+        
+        if is_conflict:
+            st.error("❌ 警告：这两者不可同时食用！")
+            with st.expander("📝 点击查看学术原理（科普）"):
+                st.write(f"【学术原理】{input_a}中的成分会干扰{input_b}的代谢酶，导致血液中毒素堆积...")
+                st.write(f"【同类提醒】如果您服用了{input_a}，那么类似的{db[input_a]['type']}也需注意。")
+        else:
+            st.success("✅ 暂未发现两者有直接冲突。")
 
-st.divider()
+    # 场景二：单框搜索模式
+    elif input_a and not st.session_state.show_second_slot:
+        st.subheader(f"🔍 {input_a} 的禁忌清单")
+        if input_a in db:
+            st.warning(f"服用{input_a}时，请避开：{', '.join(db[input_a]['banned'])}")
+            # 展示同类
+            st.info(f"所属类别：{db[input_a]['type']}")
+        else:
+            st.error("抱歉，暂未收录该药物。")
 
-# 逻辑：只要有输入就显示
-s1 = st.session_state.slot1
-s2 = st.session_state.slot2
-
-if s1 and s2:
-    # 情况 A：两者都在，判断是否相冲
-    st.subheader("🏁 判定结果")
-    # 模糊匹配逻辑（简单演示）
-    found = False
-    for pair, warning in database.items():
-        if (s1 in pair[0] or pair[0] in s1) and (s2 in pair[1] or pair[1] in s2):
-            st.error(f"⚠️ **{s1}** 与 **{s2}** 相冲！")
-            st.markdown(f"<div class='result-card'>{warning}</div>", unsafe_allow_html=True)
-            with st.expander("🔬 为什么不能一起吃？"):
-                st.info("学术解释：药物成分在肝脏代谢时共用同一路径，导致代谢受阻，产生毒性堆积...")
-            found = True
-            break
-    if not found:
-        st.success(f"✅ 暂未发现 **{s1}** 与 **{s2}** 有明确冲突。")
-
-elif s1 or s2:
-    # 情况 B：只填了一个，显示该项的所有常见禁忌
-    target = s1 if s1 else s2
-    st.subheader(f"🔍 关于“{target}”的常见避忌")
-    st.info(f"这里会列出所有与 {target} 相冲的常见药物和食物图片。")
-    # 这里可以复用你之前的列表展示逻辑
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.error("避开这些药：")
-        st.image("https://via.placeholder.com/150", caption="某种禁忌药盒")
-    with col_b:
-        st.error("避开这些食物：")
-        st.image("https://via.placeholder.com/150", caption="某种禁忌食物")
+# 每次操作后重置搜索点击状态，除非需要持久显示
+# st.session_state.search_clicked = False
