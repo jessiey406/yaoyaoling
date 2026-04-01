@@ -38,7 +38,7 @@ with col_a:
     input_a = st.text_input("药品 A", placeholder="输入第一种药品...", label_visibility="collapsed")
 with col_plus:
     if not st.session_state.compare_mode:
-        if st.button("➕"): 
+        if st.button("➕"):
             st.session_state.compare_mode = True
             st.rerun()
 
@@ -51,7 +51,7 @@ if st.session_state.compare_mode:
         col_s, col_p = st.columns(2)
         do_search = col_s.button("🚀 搜索")
         do_photo = col_p.button("📷 拍照")
-    
+
     # 第二行：输入框 B
     col_b, col_minus = st.columns([4, 1])
     with col_b:
@@ -71,23 +71,33 @@ else:
 # --- 6. 核心逻辑判断 ---
 if do_search:
     st.divider()
-    
+
     # 清洗用户输入的文字，去掉空格
     a = input_a.strip()
     b = input_b.strip()
 
     # 情况一：两个框都有内容（判断是否相冲）
     if st.session_state.compare_mode and a and b:
-        # 在数据库中查找 A 是否对 B 有禁忌
+        # 定义一个变量来存储找到的结果
+        found_result = None
+
+        # 第一步：检查 A 的禁忌里有没有 B
         if a in DRUG_DB and b in DRUG_DB[a]:
-            result = DRUG_DB[a][b]
+            found_result = DRUG_DB[a][b]
+
+        # 第二步：如果第一步没找到，检查 B 的禁忌里有没有 A（对称性检查）
+        elif b in DRUG_DB and a in DRUG_DB[b]:
+            found_result = DRUG_DB[b][a]
+
+        # 展示结果
+        if found_result:
             st.error(f"⚠️ 警告：{a} + {b} 判定相冲！")
-            st.markdown(f"<div class='result-box'><b>后果：</b>{result['effect']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='result-box'><b>后果：</b>{found_result['effect']}</div>", unsafe_allow_html=True)
             with st.expander("🔬 点击查看学术科普"):
-                st.markdown(f"<div class='science-box'>{result['science']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='science-box'>{found_result['science']}</div>", unsafe_allow_html=True)
         else:
             st.success(f"✅ 暂未发现 {a} 与 {b} 有直接冲突，请遵医嘱。")
-            
+
     # 情况二：只有一个框有内容（显示禁忌列表）
     elif a:
         if a in DRUG_DB:
